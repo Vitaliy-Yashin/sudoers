@@ -1,0 +1,10 @@
+---
+- name: Test
+  hosts: hosts
+  become: true
+  roles:
+    - admins
+    - devops
+        
+
+

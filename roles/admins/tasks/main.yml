@@ -1,0 +1,48 @@
+---
+- name: Include vars
+  ansible.builtin.include_vars:
+    file: vault/secret.yml
+
+- name: Create admins
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | password_hash('sha512') if item.password is defined else omit }}"
+    groups: "{{ item.groups }}"
+    append: yes
+    create_home: yes
+    state: present
+    shell: /bin/bash
+  loop: "{{ admins }}" 
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Copy Ssh keys
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    exclusive: true
+    key: "{{ item.ssh_keys }}"
+  loop: "{{ admins }}"
+  when: item.ssh_keys is defined and item.ssh_keys | length > 0
+  loop_control:  
+    label: "{{ item.name }}"
+
+   
+- name: Set sudo users 
+  ansible.builtin.copy:
+    src: "{{ paths.locale_files_dir }}/admins/{{ item }}"
+    dest: "{{ paths.remote_sudoers_d_dir }}/{{ item }}"
+    validate: "visudo -cf %s"
+    owner: root
+    group: root
+    mode: '0440'
+  loop: "{{ query('fileglob', '{{ paths.locale_files_dir }}/admins/*') | map('basename') | list }}"
+  loop_control:
+    label: "{{ item }}"
+
+#- name: Information Admins #Здесь пробую различные плагины, узнаю их механику
+  #ansible.builtin.copy:
+    #content:  "{{ lookup('file', '{{ paths.locale_files_dir }}/admins/{{ item }}') }}"
+    #dest: '/home/{{ item }}/README'  
+  #loop: "{{ query('fileglob', '{{ paths.locale_files_dir }}/admins/*') | map('basename') | list }}" 
+
+    
