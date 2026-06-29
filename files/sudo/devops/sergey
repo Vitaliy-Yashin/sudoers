@@ -1,0 +1,1 @@
+sergey ALL=(ALL:ALL) NOPASSWD: /usr/bin/docker, /usr/bin/apt

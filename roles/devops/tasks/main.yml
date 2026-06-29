@@ -1,0 +1,52 @@
+---
+- name: Include vars
+  ansible.builtin.include_vars:
+    file: vault/secret.yml
+
+- name: Create Devops
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | password_hash('sha512') if item.password is defined else omit }}"
+    shell: /bin/bash
+    create_home: yes
+    groups: "{{ item.groups }}"
+    append: yes
+    state: present
+  loop:  "{{ devops }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ssh Keys
+  ansible.builtin.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_keys }}"
+    state: present
+  loop: "{{ devops }}"
+  loop_control:
+    label: "{{ item.name }}"  
+  when: item.ssh_keys is defined and item.ssh_keys | length > 0
+
+- name: Set sudo users  
+  ansible.builtin.copy:
+    src: "{{ paths.locale_files_dir }}/devops/{{ item }}"
+    dest: "{{ paths.remote_sudoers_d_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: 0440
+    validate: "visudo -cf %s" #%s это путь к файлу 
+  loop: "{{ query('fileglob', '{{ paths.locale_files_dir }}/devops/*') | map('basename') | list }}"
+
+
+- name: Information Devops
+  ansible.builtin.lineinfile:
+    path: "/home/{{ item.name }}/README"
+    line: "I've changed your user setting"
+    create: yes
+    state: present
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0755"
+  loop: "{{ devops }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.ssh_keys is defined and item.ssh_keys | length > 0    

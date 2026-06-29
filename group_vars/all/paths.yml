@@ -1,0 +1,3 @@
+paths:
+  locale_files_dir: "files/sudo"
+  remote_sudoers_d_dir: "/etc/sudoers.d"
